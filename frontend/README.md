@@ -3,6 +3,19 @@
 The frontend uses Biome for linting, formatting, and import organization.
 TypeScript checks types during the build.
 
+Tailwind CSS is configured through `@tailwindcss/vite` and imported in
+`src/index.css`. Use utility classes directly in JSX, for example
+`className="flex items-center gap-4"`. Biome supports Tailwind CSS directives.
+
+State lives in `src/store`, with typed slices in `src/store/slices` and focused
+selector hooks exported from `src/store/index.ts`. The basic `appSlice` is available through `useAppStore`; Redux DevTools
+integration is enabled in development.
+
+`src/api/index.ts` defines the shared Axios client, `src/api/endpoints.ts` holds
+future endpoint paths, and `src/api/services/app.ts` is the service placeholder.
+No backend calls are implemented. Future requests should follow
+component → store action → service → shared client and endpoint constants.
+
 Run these commands from the project root, where `compose.yaml` lives.
 
 Start the development server:
