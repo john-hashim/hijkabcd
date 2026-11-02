@@ -1,3 +1,25 @@
-// Add typed methods using apiClient and ENDPOINTS.APP when a backend is connected.
-// Store actions will call these methods; components should only use the store.
-export const appService = {};
+import { ENDPOINTS } from "../endpoints";
+import apiClient from "../index";
+
+export interface WindActual {
+	dataset: string;
+	publishTime: string;
+	startTime: string;
+	settlementDate: string;
+	settlementPeriod: number;
+	fuelType: "WIND";
+	generation: number | null;
+}
+
+export const appService = {
+	async getWindActuals(date: string): Promise<WindActual[]> {
+		const { data } = await apiClient.get<WindActual[]>(
+			ENDPOINTS.APP.WIND_ACTUALS,
+			{ params: { date } },
+		);
+
+		return [...data].sort(
+			(left, right) => Date.parse(left.startTime) - Date.parse(right.startTime),
+		);
+	},
+};

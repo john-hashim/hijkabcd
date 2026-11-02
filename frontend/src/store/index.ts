@@ -19,5 +19,10 @@ export const useAppStore = () =>
 			count: state.count,
 			increment: state.increment,
 			reset: state.reset,
+			windActuals: state.windActuals,
+			windActualsDate: state.windActualsDate,
+			isLoadingWindActuals: state.isLoadingWindActuals,
+			windActualsError: state.windActualsError,
+			fetchWindActuals: state.fetchWindActuals,
 		})),
 	);

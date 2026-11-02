@@ -3,6 +3,8 @@ services:
     build: .
     init: true
     working_dir: /workspace/frontend
+    environment:
+      API_PROXY_TARGET: http://backend:8000
     volumes:
       - .:/workspace
     ports:
