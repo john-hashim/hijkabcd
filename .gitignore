@@ -9,3 +9,5 @@ __pycache__/
 *.log
 .DS_Store
 .ruff_cache
+output
+DESIGN.md
