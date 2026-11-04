@@ -1,103 +1,117 @@
-import { useState } from "react";
+import { addDays, formatISO } from "date-fns";
+import { useMemo, useState } from "react";
+import DatePicker from "@/components/DatePicker";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { formatDate } from "@/lib/formatDate";
+import Loader from "../../../components/Loader";
 import { useAppStore } from "../../../store";
+import WindGenerationChart from "./WindGenerationChart";
 
-const formatTime = (value: string) =>
-	new Date(value).toLocaleString("en-GB", {
-		timeZone: "Europe/London",
-		dateStyle: "short",
-		timeStyle: "short",
-	});
+const MIN_DECISION_DATE = new Date(2026, 0, 1);
+const MAX_DECISION_DATE = new Date(2026, 0, 31);
 
 export default function WindDashboard() {
-	const [date, setDate] = useState("");
+	const [date, setDate] = useState<Date>();
 	const {
 		windActuals,
 		windActualsDate,
 		isLoadingWindActuals,
 		windActualsError,
 		fetchWindActuals,
-	} = useAppStore();
+  } = useAppStore();
+
+	const handleShowWindGeneration = () => {
+		if (!date) return;
+		const deliveryDate = formatISO(addDays(date, 1), {
+			representation: "date",
+		});
+		fetchWindActuals(deliveryDate);
+	};
+
+	const { availableReadings, totalWindEnergy } = useMemo(() => {
+		const availableReadings = windActuals.filter(
+			(reading) => reading.generation !== null,
+		);
+		const totalWindEnergy = availableReadings.reduce(
+			(total, reading) => total + (reading.generation ?? 0) * 0.5,
+			0,
+		);
+		return { availableReadings, totalWindEnergy };
+	}, [windActuals]);
 
 	return (
-		<section aria-labelledby="wind-heading">
-			<div>
-				<h1 id="wind-heading">Actual wind generation</h1>
-				<p>Select a delivery date to see Elexon-reported wind generation.</p>
-			</div>
-
-			<form
-				onSubmit={(event) => {
-					event.preventDefault();
-					if (date) void fetchWindActuals(date);
-				}}
-			>
-				<div>
-					<label htmlFor="delivery-date">Delivery date</label>
-					<input
-						id="delivery-date"
-						type="date"
-						required
-						value={date}
-						onChange={(event) => setDate(event.target.value)}
+		<div className="space-y-4 py-6">
+			<div className="space-y-4">
+				<div className="grid gap-2">
+					<Label htmlFor="decision-date" className="text-sm font-semibold">
+						When are you making the electricity purchase decision?
+					</Label>
+					<p className="text-sm text-muted-foreground">
+						Choose a date in January 2026. We will show wind generation for the
+						following day.
+					</p>
+					<DatePicker
+						id="decision-date"
+						date={date}
+						onChange={setDate}
+						minDate={MIN_DECISION_DATE}
+						maxDate={MAX_DECISION_DATE}
 					/>
 				</div>
-				<button type="submit" disabled={!date || isLoadingWindActuals}>
-					{isLoadingWindActuals ? "Loading…" : "Load actuals"}
-				</button>
-			</form>
+				{date && (
+					<p className="text-sm">
+						Wind generation date: {formatDate(addDays(date, 1))}.
+					</p>
+				)}
+				<Button
+					type="button"
+					disabled={!date || isLoadingWindActuals}
+					onClick={handleShowWindGeneration}
+				>
+					Show wind generation
+				</Button>
+			</div>
 
-			<div aria-live="polite" aria-busy={isLoadingWindActuals}>
+			<div aria-busy={isLoadingWindActuals}>
 				{isLoadingWindActuals ? (
-					<p>Fetching wind generation…</p>
+					<Loader />
 				) : windActualsError ? (
-					<p role="alert">{windActualsError} Select Load actuals to retry.</p>
-				) : !windActualsDate ? (
-					<p>Choose a date and select Load actuals.</p>
-				) : windActuals.length === 0 ? (
-					<p>No wind generation readings found for {windActualsDate}.</p>
+					<p>{windActualsError} Select Show wind generation to retry.</p>
+				) : !windActualsDate ? null : windActuals.length === 0 ? (
+					<p>
+						No wind generation readings found for {formatDate(windActualsDate)}.
+					</p>
 				) : (
-					<div>
-						<table>
-							<caption>
-								{windActuals.length} readings for {windActualsDate}. Times shown
-								in Europe/London.
-							</caption>
-							<thead>
-								<tr>
-									{[
-										"Settlement date",
-										"Period",
-										"Start time",
-										"Generation (MW)",
-										"Fuel",
-										"Dataset",
-										"Published",
-									].map((heading) => (
-										<th key={heading} scope="col">
-											{heading}
-										</th>
-									))}
-								</tr>
-							</thead>
-							<tbody>
-								{windActuals.map((reading) => (
-									<tr key={reading.startTime}>
-										<td>{reading.settlementDate}</td>
-										<td>{reading.settlementPeriod}</td>
-										<td>{formatTime(reading.startTime)}</td>
-										<td>
-											{reading.generation?.toLocaleString("en-GB") ?? "Missing"}
-										</td>
-										<td>{reading.fuelType}</td>
-										<td>{reading.dataset}</td>
-										<td>{formatTime(reading.publishTime)}</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
+					<div className="space-y-4">
+						<div className="max-w-md space-y-2 rounded-xl border bg-white p-4">
+							<h2 className="text-sm font-semibold text-slate-700">
+								Total wind electricity generated on{" "}
+								{formatDate(windActualsDate)}
+							</h2>
+							<p className="text-3xl font-bold">
+								{availableReadings.length > 0
+									? totalWindEnergy.toLocaleString("en-GB", {
+											maximumFractionDigits: 1,
+										})
+									: "Not available"}
+								{availableReadings.length > 0 && (
+									<span className="ml-2 text-base font-medium text-muted-foreground">
+										MWh
+									</span>
+								)}
+							</p>
+							<p className="text-xs text-muted-foreground">
+								MWh measures how much electricity was generated.
+							</p>
+						</div>
+						<WindGenerationChart
+							readings={windActuals}
+							date={windActualsDate}
+						/>
 					</div>
 				)}
 			</div>
-		</section>
+		</div>
 	);
 }

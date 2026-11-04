@@ -7,9 +7,10 @@ services:
       API_PROXY_TARGET: http://backend:8000
     volumes:
       - .:/workspace
+      - frontend_node_modules:/workspace/frontend/node_modules
     ports:
       - "127.0.0.1:5173:5173"
-    command: npm run dev -- --host 0.0.0.0 --port 5173 --strictPort
+    command: sh -c "npm ci --include=optional --no-audit --no-fund && npm run dev -- --host 0.0.0.0 --port 5173 --strictPort"
   db:
     image: postgres:18
     environment:
@@ -26,4 +27,5 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
 volumes:
+  frontend_node_modules:
   postgres_data:
